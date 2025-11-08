@@ -39,8 +39,14 @@ class UserManager {
                 <td>${user.name}</td>
                 <td>${user.email}</td>
                 <td>
-                    <button class="btn btn-sm btn-info" onclick="userManager.showUserDetails(${user.id})">
+                    <button class="btn btn-sm btn-info me-1" onclick="userManager.showUserDetails(${user.id})">
                         Подробнее
+                    </button>
+                    <button class="btn btn-sm btn-warning me-1" onclick="userManager.showEditForm(${user.id})">
+                        Изменить
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="userManager.deleteUser(${user.id})">
+                        Удалить
                     </button>
                 </td>
             </tr>
@@ -90,9 +96,9 @@ class UserManager {
                     <p><strong>ID:</strong> ${user.id}</p>
                     <p><strong>Имя:</strong> ${user.name}</p>
                     <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Создан:</strong> ${createdAt()}</p>
                 `;
 
-                // Показываем модальное окно
                 const modal = new bootstrap.Modal(document.getElementById('userModal'));
                 modal.show();
             } else {
@@ -100,6 +106,83 @@ class UserManager {
             }
         } catch (error) {
             this.showMessage('Ошибка загрузки данных', 'danger');
+        }
+    }
+
+    async showEditForm(userId) {
+        try {
+            const response = await fetch(`/users/${userId}`);
+            const user = await response.json();
+
+            if (response.ok) {
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editName').value = user.name;
+                document.getElementById('editEmail').value = user.email;
+
+                const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                modal.show();
+            } else {
+                this.showMessage('Пользователь не найден', 'danger');
+            }
+        } catch (error) {
+            this.showMessage('Ошибка загрузки данных для редактирования', 'danger');
+        }
+    }
+
+    async updateUser() {
+        const userId = document.getElementById('editUserId').value;
+        const name = document.getElementById('editName').value.trim();
+        const email = document.getElementById('editEmail').value.trim();
+
+        if (!name || !email) {
+            this.showMessage('Заполните все поля', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showMessage('Пользователь успешно обновлен', 'success');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                modal.hide();
+                this.loadUsers();
+            } else {
+                this.showMessage(result.error, 'danger');
+            }
+        } catch (error) {
+            this.showMessage('Ошибка при обновлении пользователя', 'danger');
+        }
+    }
+
+    async deleteUser(userId) {
+        if (!confirm('Вы уверены, что хотите удалить этого пользователя?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/users/${userId}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showMessage('Пользователь успешно удален', 'success');
+                this.loadUsers();
+            } else {
+                this.showMessage(result.error, 'danger');
+            }
+        } catch (error) {
+            this.showMessage('Ошибка при удалении пользователя', 'danger');
         }
     }
 

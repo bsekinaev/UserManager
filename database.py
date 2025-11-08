@@ -18,7 +18,8 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE
+                email TEXT NOT NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         conn.commit()
@@ -41,3 +42,18 @@ def create_user(name, email):
         )
         conn.commit()
         return cursor.lastrowid
+
+def update_user(user_id, name, email):
+    # Обновление пользователя
+    with get_db() as conn:
+        cursor = conn.execute(
+            'UPDATE users SET name = ?, email = ? WHERE id = ?', (name, email, user_id))
+        conn.commit()
+        return cursor.rowcount
+
+def delete_user(user_id):
+    # Удаление пользователя
+    with get_db() as conn:
+        cursor = conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+        return cursor.rowcount
