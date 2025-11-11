@@ -1,6 +1,34 @@
 class UserManager {
     constructor() {
+        // Кэширование DOM элементов для производительности
+        this.elements = {};
+        this.cacheElements();
         this.init();
+    }
+
+    cacheElements() {
+        // Основные элементы
+        this.elements.userForm = document.getElementById('userForm');
+        this.elements.userTable = document.getElementById('userTable');
+        this.elements.message = document.getElementById('message');
+
+        // Форма добавления
+        this.elements.name = document.getElementById('name');
+        this.elements.email = document.getElementById('email');
+        this.elements.nameError = document.getElementById('nameError');
+        this.elements.emailError = document.getElementById('emailError');
+
+        // Форма редактирования
+        this.elements.editUserId = document.getElementById('editUserId');
+        this.elements.editName = document.getElementById('editName');
+        this.elements.editEmail = document.getElementById('editEmail');
+        this.elements.editNameError = document.getElementById('editNameError');
+        this.elements.editEmailError = document.getElementById('editEmailError');
+
+        // Модальные окна
+        this.elements.userModal = document.getElementById('userModal');
+        this.elements.editUserModal = document.getElementById('editUserModal');
+        this.elements.userDetails = document.getElementById('userDetails');
     }
 
     init() {
@@ -9,7 +37,7 @@ class UserManager {
     }
 
     setupEventListeners() {
-        document.getElementById('userForm').addEventListener('submit', (e) => {
+        this.elements.userForm.addEventListener('submit', (e) => {
             e.preventDefault();
             this.addUser();
         });
@@ -17,27 +45,41 @@ class UserManager {
 
     async loadUsers() {
         try {
+            this.showLoading();
             const response = await fetch('/users');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const users = await response.json();
             this.renderUsers(users);
         } catch (error) {
+            console.error('Error loading users:', error);
             this.showMessage('Ошибка загрузки пользователей', 'danger');
         }
     }
 
-    renderUsers(users) {
-        const tbody = document.getElementById('userTable');
+    showLoading() {
+        this.elements.userTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    Загрузка...
+                </td>
+            </tr>
+        `;
+    }
 
+    renderUsers(users) {
         if (users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Нет пользователей</td></tr>';
+            this.elements.userTable.innerHTML = '<tr><td colspan="4" class="text-center">Нет пользователей</td></tr>';
             return;
         }
 
-        tbody.innerHTML = users.map(user => `
+        this.elements.userTable.innerHTML = users.map(user => `
             <tr>
-                <td>${user.id}</td>
-                <td>${user.name}</td>
-                <td>${user.email}</td>
+                <td>${this.escapeHtml(user.id)}</td>
+                <td>${this.escapeHtml(user.name)}</td>
+                <td>${this.escapeHtml(user.email)}</td>
                 <td>
                     <button class="btn btn-sm btn-info me-1" onclick="userManager.showUserDetails(${user.id})">
                         Подробнее
@@ -53,12 +95,24 @@ class UserManager {
         `).join('');
     }
 
-    async addUser() {
-        const name = document.getElementById('name').value.trim();
-        const email = document.getElementById('email').value.trim();
+    // Защита от XSS
+    escapeHtml(unsafe) {
+        return unsafe
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 
-        if (!name || !email) {
-            this.showMessage('Заполните все поля', 'warning');
+    async addUser() {
+        const name = this.elements.name.value.trim();
+        const email = this.elements.email.value.trim();
+
+        this.clearErrors();
+
+        if (!this.validateForm(name, email)) {
             return;
         }
 
@@ -75,12 +129,13 @@ class UserManager {
 
             if (response.ok) {
                 this.showMessage('Пользователь успешно добавлен', 'success');
-                document.getElementById('userForm').reset();
+                this.elements.userForm.reset();
                 this.loadUsers();
             } else {
                 this.showMessage(result.error, 'danger');
             }
         } catch (error) {
+            console.error('Error adding user:', error);
             this.showMessage('Ошибка при добавлении пользователя', 'danger');
         }
     }
@@ -91,20 +146,21 @@ class UserManager {
             const user = await response.json();
 
             if (response.ok) {
-                const modalBody = document.getElementById('userDetails');
-                modalBody.innerHTML = `
-                    <p><strong>ID:</strong> ${user.id}</p>
-                    <p><strong>Имя:</strong> ${user.name}</p>
-                    <p><strong>Email:</strong> ${user.email}</p>
-                    <p><strong>Создан:</strong> ${createdAt()}</p>
+                const createdAt = user.created_at ? new Date(user.created_at).toLocaleString() : 'Не указано';
+                this.elements.userDetails.innerHTML = `
+                    <p><strong>ID:</strong> ${this.escapeHtml(user.id)}</p>
+                    <p><strong>Имя:</strong> ${this.escapeHtml(user.name)}</p>
+                    <p><strong>Email:</strong> ${this.escapeHtml(user.email)}</p>
+                    <p><strong>Создан:</strong> ${this.escapeHtml(createdAt)}</p>
                 `;
 
-                const modal = new bootstrap.Modal(document.getElementById('userModal'));
+                const modal = new bootstrap.Modal(this.elements.userModal);
                 modal.show();
             } else {
                 this.showMessage('Пользователь не найден', 'danger');
             }
         } catch (error) {
+            console.error('Error loading user details:', error);
             this.showMessage('Ошибка загрузки данных', 'danger');
         }
     }
@@ -115,27 +171,29 @@ class UserManager {
             const user = await response.json();
 
             if (response.ok) {
-                document.getElementById('editUserId').value = user.id;
-                document.getElementById('editName').value = user.name;
-                document.getElementById('editEmail').value = user.email;
+                this.elements.editUserId.value = user.id;
+                this.elements.editName.value = user.name;
+                this.elements.editEmail.value = user.email;
 
-                const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                const modal = new bootstrap.Modal(this.elements.editUserModal);
                 modal.show();
             } else {
                 this.showMessage('Пользователь не найден', 'danger');
             }
         } catch (error) {
+            console.error('Error loading user for edit:', error);
             this.showMessage('Ошибка загрузки данных для редактирования', 'danger');
         }
     }
 
     async updateUser() {
-        const userId = document.getElementById('editUserId').value;
-        const name = document.getElementById('editName').value.trim();
-        const email = document.getElementById('editEmail').value.trim();
+        const userId = this.elements.editUserId.value;
+        const name = this.elements.editName.value.trim();
+        const email = this.elements.editEmail.value.trim();
 
-        if (!name || !email) {
-            this.showMessage('Заполните все поля', 'warning');
+        this.clearErrors();
+
+        if (!this.validateForm(name, email, true)) {
             return;
         }
 
@@ -152,13 +210,14 @@ class UserManager {
 
             if (response.ok) {
                 this.showMessage('Пользователь успешно обновлен', 'success');
-                const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                const modal = bootstrap.Modal.getInstance(this.elements.editUserModal);
                 modal.hide();
                 this.loadUsers();
             } else {
                 this.showMessage(result.error, 'danger');
             }
         } catch (error) {
+            console.error('Error updating user:', error);
             this.showMessage('Ошибка при обновлении пользователя', 'danger');
         }
     }
@@ -182,22 +241,79 @@ class UserManager {
                 this.showMessage(result.error, 'danger');
             }
         } catch (error) {
+            console.error('Error deleting user:', error);
             this.showMessage('Ошибка при удалении пользователя', 'danger');
         }
     }
 
     showMessage(message, type) {
-        const messageDiv = document.getElementById('message');
-        messageDiv.innerHTML = `
+        this.elements.message.innerHTML = `
             <div class="alert alert-${type} alert-dismissible fade show">
-                ${message}
+                ${this.escapeHtml(message)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `;
     }
+
+    isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    isValidName(name) {
+        const nameRegex = /^[a-zA-Zа-яА-ЯёЁ\s\-]{2,50}$/;
+        return nameRegex.test(name);
+    }
+
+    clearErrors() {
+        // Очистка ошибок в форме добавления
+        [this.elements.name, this.elements.email].forEach(el => el.classList.remove('is-invalid'));
+        [this.elements.nameError, this.elements.emailError].forEach(el => el.textContent = '');
+
+        // Очистка ошибок в форме редактирования
+        [this.elements.editName, this.elements.editEmail].forEach(el => el.classList.remove('is-invalid'));
+        [this.elements.editNameError, this.elements.editEmailError].forEach(el => el.textContent = '');
+    }
+
+    validateForm(name, email, isEditForm = false) {
+        let isValid = true;
+        const nameField = isEditForm ? this.elements.editName : this.elements.name;
+        const emailField = isEditForm ? this.elements.editEmail : this.elements.email;
+        const nameErrorField = isEditForm ? this.elements.editNameError : this.elements.nameError;
+        const emailErrorField = isEditForm ? this.elements.editEmailError : this.elements.emailError;
+
+        // Валидация имени
+        if (!name.trim()) {
+            nameField.classList.add('is-invalid');
+            nameErrorField.textContent = 'Имя обязательно для заполнения';
+            isValid = false;
+        } else if (!this.isValidName(name)) {
+            nameField.classList.add('is-invalid');
+            nameErrorField.textContent = 'Имя должно содержать только буквы и пробелы (от 2 до 50 символов)';
+            isValid = false;
+        } else {
+            nameField.classList.remove('is-invalid');
+            nameErrorField.textContent = '';
+        }
+
+        // Валидация Email
+        if (!email.trim()) {
+            emailField.classList.add('is-invalid');
+            emailErrorField.textContent = 'Email обязателен для заполнения';
+            isValid = false;
+        } else if (!this.isValidEmail(email)) {
+            emailField.classList.add('is-invalid');
+            emailErrorField.textContent = 'Введите корректный Email адрес';
+            isValid = false;
+        } else {
+            emailField.classList.remove('is-invalid');
+            emailErrorField.textContent = '';
+        }
+
+        return isValid;
+    }
 }
 
-// Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
     window.userManager = new UserManager();
 });

@@ -26,7 +26,7 @@ def init_db():
 
 def get_all_users():
     with get_db() as conn:
-        users = conn.execute('SELECT * FROM users').fetchall()
+        users = conn.execute('SELECT * FROM users ORDER BY id DESC').fetchall()
         return [dict(user) for user in users]
 
 def get_user_by_id(user_id):
@@ -44,15 +44,15 @@ def create_user(name, email):
         return cursor.lastrowid
 
 def update_user(user_id, name, email):
-    # Обновление пользователя
     with get_db() as conn:
         cursor = conn.execute(
-            'UPDATE users SET name = ?, email = ? WHERE id = ?', (name, email, user_id))
+            'UPDATE users SET name = ?, email = ? WHERE id = ?',
+            (name, email, user_id)
+        )
         conn.commit()
         return cursor.rowcount
 
 def delete_user(user_id):
-    # Удаление пользователя
     with get_db() as conn:
         cursor = conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
         conn.commit()

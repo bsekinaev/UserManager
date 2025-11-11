@@ -1,9 +1,16 @@
 import sqlite3
-
+import re
 from flask import Flask, jsonify, request, render_template
 from database import init_db, get_all_users, get_user_by_id, create_user, update_user, delete_user
 
 app = Flask(__name__)
+
+def is_valid_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def is_valid_name(name):
+    return 2 <= len(name) <= 50 and re.match(r'^[a-zA-Zа-яА-ЯёЁ\s\-]+$', name)
 
 @app.before_request
 def initialize_database():
@@ -39,7 +46,18 @@ def add_user():
         if not data or not data.get('name') or not data.get('email'):
             return jsonify({'error': 'Необходимо указать имя и email'}), 400
 
-        user_id = create_user(data['name'], data['email'])
+        name = data['name'].strip()
+        email = data['email'].strip().lower()
+
+        if not is_valid_name(name):
+            return jsonify({
+                'error': 'Имя должно быть от 2 до 50 символов и содержать только буквы, пробелы и дефисы'
+            }), 400
+        elif not is_valid_email(email):
+            return jsonify({
+                'error': 'Некорректный email адрес'}), 400
+
+        user_id = create_user(name, email)
         return jsonify({
             'message': 'Пользователь добавлен успешно!',
             'user_id': user_id
@@ -58,7 +76,18 @@ def update_user_route(user_id):
         if not data or not data.get('name') or not data.get('email'):
             return jsonify({'error': 'Необходимо указать имя и email'}), 400
 
-        updated_count = update_user(user_id, data['name'], data['email'])
+        name = data['name'].strip()
+        email = data['email'].strip().lower()
+
+        if not is_valid_name(name):
+            return jsonify({
+                'error': 'Имя должно быть от 2 до 50 символов и содержать только буквы, пробелы и дефисы'
+            }), 400
+        elif not is_valid_email(email):
+            return jsonify({
+                'error': 'Некорректный email адрес'}), 400
+
+        updated_count = update_user(user_id, name, email)
         if updated_count == 0:
             return jsonify({'error': 'Пользователь не найден'}), 404
         return jsonify({'message': 'Пользователь обновлен успешно!'}), 200
