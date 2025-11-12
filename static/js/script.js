@@ -1,6 +1,13 @@
 class UserManager {
     constructor() {
         // Кэширование DOM элементов для производительности
+        this.users = [];
+        this.filteredUsers = [];
+        this.filters = {
+            searchTerm: '',
+            sort: 'newest'
+        };
+
         this.elements = {};
         this.cacheElements();
         this.init();
@@ -29,6 +36,12 @@ class UserManager {
         this.elements.userModal = document.getElementById('userModal');
         this.elements.editUserModal = document.getElementById('editUserModal');
         this.elements.userDetails = document.getElementById('userDetails');
+
+        // Фильтры и сортировка
+        this.elements.searchInput = document.getElementById('searchInput');
+        this.elements.sortSelect = document.getElementById('sortSelect');
+        this.elements.filterInfo = document.getElementById('filterInfo');
+        this.elements.totalUsers = document.getElementById('totalUsers');
     }
 
     init() {
@@ -41,6 +54,8 @@ class UserManager {
             e.preventDefault();
             this.addUser();
         });
+        this.elements.searchInput.addEventListener('input', () => {this.handleSearch()});
+        this.elements.sortSelect.addEventListener('change', () => {this.handelSort()});
     }
 
     async loadUsers() {
@@ -48,8 +63,8 @@ class UserManager {
             this.showLoading();
             const response = await fetch('/users');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const users = await response.json();
-            this.renderUsers(users);
+            this.users = await response.json();
+            this.applyFilters();
         } catch (error) {
             console.error('Error loading users:', error);
             this.showMessage('Ошибка загрузки пользователей', 'danger');
@@ -71,28 +86,40 @@ class UserManager {
 
     renderUsers(users) {
         if (users.length === 0) {
-            this.elements.userTable.innerHTML = '<tr><td colspan="4" class="text-center">Нет пользователей</td></tr>';
+            const noResultsMessage = this.filters.searchTerm
+            ? 'Пользователи по вашему запросу не найдены'
+            : 'Нет пользователей';
+
+            this.elements.userTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted py-4">
+                    <div>${noResultsMessage}</div>
+                    ${this.filters.searchTerm ?
+                        '<small>Попробуйте изменить поисковый запрос</small>' : ''}
+                </td>
+            </tr>
+        `;
             return;
         }
 
         this.elements.userTable.innerHTML = users.map(user => `
-            <tr>
-                <td>${this.escapeHtml(user.id)}</td>
-                <td>${this.escapeHtml(user.name)}</td>
-                <td>${this.escapeHtml(user.email)}</td>
-                <td>
-                    <button class="btn btn-sm btn-info me-1" onclick="userManager.showUserDetails(${user.id})">
-                        Подробнее
-                    </button>
-                    <button class="btn btn-sm btn-warning me-1" onclick="userManager.showEditForm(${user.id})">
-                        Изменить
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="userManager.deleteUser(${user.id})">
-                        Удалить
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        <tr>
+            <td>${this.escapeHtml(user.id)}</td>
+            <td>${this.escapeHtml(user.name)}</td>
+            <td>${this.escapeHtml(user.email)}</td>
+            <td>
+                <button class="btn btn-sm btn-info me-1" onclick="userManager.showUserDetails(${user.id})">
+                    Подробнее
+                </button>
+                <button class="btn btn-sm btn-warning me-1" onclick="userManager.showEditForm(${user.id})">
+                    Изменить
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="userManager.deleteUser(${user.id})">
+                    Удалить
+                </button>
+            </td>
+        </tr>
+    `).join('');
     }
 
     // Защита от XSS
@@ -130,7 +157,7 @@ class UserManager {
             if (response.ok) {
                 this.showMessage('Пользователь успешно добавлен', 'success');
                 this.elements.userForm.reset();
-                this.loadUsers();
+                await this.loadUsers();
             } else {
                 this.showMessage(result.error, 'danger');
             }
@@ -212,7 +239,7 @@ class UserManager {
                 this.showMessage('Пользователь успешно обновлен', 'success');
                 const modal = bootstrap.Modal.getInstance(this.elements.editUserModal);
                 modal.hide();
-                this.loadUsers();
+                await this.loadUsers();
             } else {
                 this.showMessage(result.error, 'danger');
             }
@@ -236,7 +263,7 @@ class UserManager {
 
             if (response.ok) {
                 this.showMessage('Пользователь успешно удален', 'success');
-                this.loadUsers();
+                await this.loadUsers();
             } else {
                 this.showMessage(result.error, 'danger');
             }
@@ -311,6 +338,64 @@ class UserManager {
         }
 
         return isValid;
+    }
+    applyFilters() {
+        let filtered = [...this.users];
+
+        // Поиск по имени и email
+        if (this.filters.searchTerm) {
+            const searchTerm = this.filters.searchTerm.toLowerCase();
+            filtered = filtered.filter(user =>
+            user.name.toLowerCase().includes(searchTerm) ||
+            user.email.toLowerCase().includes(searchTerm)
+            );
+        }
+        // Сортировка
+        filtered.sort((a, b) => {
+                switch (this.filters.sortBy) {
+                    case 'name_asc':
+                        return a.name.localeCompare(b.name);
+                    case 'name_desc':
+                        return b.name.localeCompare(a.name);
+                    case 'email_asc':
+                        return a.email.localeCompare(b.email);
+                    case 'oldest':
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    case 'newest':
+                    default:
+                        return new Date(b.created_at) - new Date(a.created_at);
+                }
+    });
+        this.filteredUsers = filtered;
+        this.renderUsers(this.filteredUsers);
+        this.updateFilterInfo();
+    }
+    handleSearch() {
+        this.filters.searchTerm = this.elements.searchInput.value.trim();
+        this.applyFilters();
+    }
+    handleSort() {
+        this.filters.sortBy = this.elements.sortSelect.value;
+        this.applyFilters();
+    }
+    resetFilters() {
+        this.elements.searchInput.value = '';
+        this.elements.sortSelect.value = 'newest';
+        this.filters.searchTerm = '';
+        this.filters.sortBy = 'newest';
+        this.applyFilters();
+    }
+
+    updateFilterInfo() {
+        const total = this.users.length;
+        const showing = this.filteredUsers.length;
+
+        if (total === showing) {
+            this.elements.filterInfo.innerHTML = `Всего пользователей: <strong>${total}</strong>`;
+        } else {
+            this.elements.filterInfo.innerHTML = `
+            Показано пользователей: <strong>${showing}</strong> из <strong>${total}</strong>`;
+        }
     }
 }
 

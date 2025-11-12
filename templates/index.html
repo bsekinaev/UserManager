@@ -32,6 +32,41 @@
         </div>
     </div>
 
+    <!-- Фильтрация и поиск -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="card-title">Фильтры и поиск</h6>
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <input type="text" class="form-control" id="searchInput"
+                           placeholder="Введите имя или email для поиска..."
+                           oninput="userManager.handleSearch()">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="sortSelect" onchange="userManager.handleSort()">
+                        <option value="newest">Сначала новые</option>
+                        <option value="oldest">Сначала старые</option>
+                        <option value="name_asc">Имя А-Я</option>
+                        <option value="name_desc">Имя Я-А</option>
+                        <option value="email_asc">Email А-Я</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-grid">
+                        <button class="btn btn-outline-secondary" onclick="userManager.resetFilters()">
+                            <i class="bi bi-arrow-clockwise"></i> Сбросить
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted" id="filterInfo">
+                    Всего пользователей: <span id="totalUsers">0</span>
+                </small>
+            </div>
+        </div>
+    </div>
+
     <!-- Список пользователей -->
     <div class="card">
         <div class="card-body">
@@ -100,6 +135,7 @@
         </div>
     </div>
 </div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
