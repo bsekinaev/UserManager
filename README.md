@@ -4,7 +4,7 @@
 [![Flask](https://img.shields.io/badge/Flask-2.3.3-green.svg)](https://flask.palletsprojects.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
 [![CI/CD](https://github.com/bsekinaev/UserManager/actions/workflows/ci.yml/badge.svg)](https://github.com/bsekinaev/UserManager/actions)
-[![Coverage](https://codecov.io/gh/bsekinaev/UserManager/branch/main/graph/badge.svg)](https://codecov.io/gh/bsekinaev/UserManager)
+[![Release](https://img.shields.io/github/v/release/bsekinaev/UserManager?label=release&color=blue)](https://github.com/bsekinaev/UserManager/releases/tag/v2.0.0)
 
 > 📋 **Контекст:** Данное решение выполнено для отбора на стажировку по задаче для **Fullstack-разработчиков от Digital агентства «Победа»** (программа «Нетология.Лаборатория практики»).  
 > Проект демонстрирует полный цикл разработки: от проектирования REST API и валидации данных до контейнеризации, автоматического тестирования и CI/CD.
