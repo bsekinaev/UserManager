@@ -55,7 +55,7 @@ class UserManager {
             this.addUser();
         });
         this.elements.searchInput.addEventListener('input', () => {this.handleSearch()});
-        this.elements.sortSelect.addEventListener('change', () => {this.handelSort()});
+        this.elements.sortSelect.addEventListener('change', () => {this.handleSort()});
     }
 
     async loadUsers() {
