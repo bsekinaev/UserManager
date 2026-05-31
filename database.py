@@ -1,11 +1,21 @@
 import sqlite3
 from contextlib import contextmanager
+from flask import current_app
 
-DATABASE = 'users.db'
+# Дефолтное значение для прямого запуска
+DEFAULT_DATABASE = 'users.db'
+
+def get_database_path():
+    """Получает путь к БД из конфига Flask или использует дефолт"""
+    try:
+        return current_app.config.get('DATABASE', DEFAULT_DATABASE)
+    except RuntimeError:
+        # Вне контекста приложения (например, при прямом импорте)
+        return DEFAULT_DATABASE
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(get_database_path())
     conn.row_factory = sqlite3.Row
     try:
         yield conn

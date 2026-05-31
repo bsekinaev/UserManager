@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/users"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  test:
+    build: .
+    volumes:
+      - .:/app
+    command: pytest tests/test_api.py -v --cov=app --cov=database
+    profiles: ["test"] # запускать только явно
